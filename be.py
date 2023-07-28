@@ -147,11 +147,13 @@ def send_confirmation_email(user_email):
     token = jwt.encode({'email': user_email, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'], algorithm="HS256")
     msg = Message('Confirm Email', sender = 'renmailtester@gmail.com', recipients = [user_email])
     link = url_for('confirm_email', token=token, _external=True)
+    
+    logo_url = url_for('static', filename='logo.jpg', _external=True)
 
     msg.html = f"""
     <html>
         <body>
-            <img src="http://localhost:2999/static/logo.jpg" alt="Logo">
+            <img src="{logo_url}" alt="Logo">
             <h1></h1>
             <p>Thank you for signing up with Renlob Renewables.</p>
             <p>To complete your registration, please click on the link below to confirm your email address.</p>
@@ -168,11 +170,13 @@ def send_confirmation_email(user_email):
 def send_reset_password_email(user_email, code):
     msg = Message('Reset Password', sender = 'renmailtester@gmail.com', recipients = [user_email])
     
+    logo_url = url_for('static', filename='logo.jpg', _external=True)
+    
     msg.body = 'Your reset code is {}'.format(code)
     msg.html = """
     <html>
         <body>
-            <img src="http://localhost:2999/static/logo.jpg" alt="Logo">
+            <img src="{logo_url}" alt="Logo">
             <h2>Reset Password</h2>
             <p>Dear Customer,</p>
             <p>You have requested to reset your password at Renlob Renewables. Use the following code to reset your password:</p>
