@@ -169,11 +169,11 @@ def send_confirmation_email(user_email):
 
 def send_reset_password_email(user_email, code):
     msg = Message('Reset Password', sender = 'renmailtester@gmail.com', recipients = [user_email])
-    
+
     logo_url = url_for('static', filename='logo.jpg', _external=True)
     
     msg.body = 'Your reset code is {}'.format(code)
-    msg.html = """
+    msg.html = f"""
     <html>
         <body>
             <img src="{logo_url}" alt="Logo">
