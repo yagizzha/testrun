@@ -180,7 +180,7 @@ def send_reset_password_email(user_email, code):
             <h2>Reset Password</h2>
             <p>Dear Customer,</p>
             <p>You have requested to reset your password at Renlob Renewables. Use the following code to reset your password:</p>
-            <h2 style="color:blue;">{}</h2>
+            <h2 style="color:blue;">{code}</h2>
             <p>If you did not request a password reset, please ignore this email or contact us immediately.</p>
             <p>Best regards,</p>
             <p>The Renlob Renewables Team</p>
