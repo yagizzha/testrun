@@ -186,7 +186,7 @@ def send_reset_password_email(user_email, code):
             <p>The Renlob Renewables Team</p>
         </body>
     </html>
-    """.format(code)
+    """
     mail.send(msg)
 
 @app.route('/forgot_password', methods=['POST'])
