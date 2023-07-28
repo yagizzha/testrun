@@ -8,6 +8,9 @@ from functools import wraps
 import base64
 from flask_mail import Mail, Message
 from random import randint
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from base64 import b64encode, b64decode
 
 app = Flask(__name__)
 app.config["MONGODB_HOST"] = "mongodb+srv://ren1:test1@rent1.r0twrgt.mongodb.net/MDB"
@@ -23,6 +26,10 @@ app.config['MAIL_USE_SSL'] = True
 db = MongoEngine()
 db.init_app(app)
 mail = Mail(app)
+
+key = b'rPC7WScr7fUpltFL'
+cipher = AES.new(key, AES.MODE_ECB)
+
 
 class account(db.Document):
     email = db.StringField(required=True, unique=True)
@@ -50,12 +57,16 @@ class account(db.Document):
     def check_password(self, password):
         return check_password_hash(self.password, password)
 
-def send_confirmation_email(user_email):
-    token = jwt.encode({'email': user_email, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'], algorithm="HS256")
-    msg = Message('Confirm Email', sender = 'yourtestmail@gmail.com', recipients = [user_email])
-    link = url_for('confirm_email', token=token, _external=True)
-    msg.body = 'Your link is {}'.format(link)
-    mail.send(msg)
+def encrypt(message):
+    message = message.encode()
+    ciphertext = cipher.encrypt(pad(message, AES.block_size))
+    return b64encode(ciphertext).decode()
+
+def decrypt(ciphertext):
+    ciphertext = b64decode(ciphertext.encode())
+    plaintext = unpad(cipher.decrypt(ciphertext), AES.block_size)
+    return plaintext.decode()
+
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -131,9 +142,47 @@ def token_required(f):
 
     return decorated
 
+
+def send_confirmation_email(user_email):
+    token = jwt.encode({'email': user_email, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'], algorithm="HS256")
+    msg = Message('Confirm Email', sender = 'renmailtester@gmail.com', recipients = [user_email])
+    link = url_for('confirm_email', token=token, _external=True)
+
+    msg.html = f"""
+    <html>
+        <body>
+            <img src="http://localhost:2999/static/logo.jpg" alt="Logo">
+            <h1></h1>
+            <p>Thank you for signing up with Renlob Renewables.</p>
+            <p>To complete your registration, please click on the link below to confirm your email address.</p>
+            <a href="{link}">Confirm Email</a>
+            <p>If you did not make this request, you can ignore this email.</p>
+            <p>Best regards,</p>
+            <p>Renlob Renewables Team</p>
+        </body>
+    </html>
+    """
+
+    mail.send(msg)
+
 def send_reset_password_email(user_email, code):
-    msg = Message('Reset Password', sender = 'yourtestmail@gmail.com', recipients = [user_email])
+    msg = Message('Reset Password', sender = 'renmailtester@gmail.com', recipients = [user_email])
+    
     msg.body = 'Your reset code is {}'.format(code)
+    msg.html = """
+    <html>
+        <body>
+            <img src="http://localhost:2999/static/logo.jpg" alt="Logo">
+            <h2>Reset Password</h2>
+            <p>Dear Customer,</p>
+            <p>You have requested to reset your password at Renlob Renewables. Use the following code to reset your password:</p>
+            <h2 style="color:blue;">{}</h2>
+            <p>If you did not request a password reset, please ignore this email or contact us immediately.</p>
+            <p>Best regards,</p>
+            <p>The Renlob Renewables Team</p>
+        </body>
+    </html>
+    """.format(code)
     mail.send(msg)
 
 @app.route('/forgot_password', methods=['POST'])
@@ -143,7 +192,7 @@ def forgot_password():
     if user is None:
         return jsonify({'message': 'Email not found'}), 404
 
-    code = randint(10000000, 99999999)
+    code = randint(100000, 999999)
     user.reset_code = code
     user.save()
 
@@ -171,6 +220,39 @@ def reset_password():
 @token_required
 def get_devices(current_user):
     return jsonify({'devices': current_user.list_of_devices}), 200
+
+@app.route('/user_info', methods=['GET'])
+@token_required
+def user_info(current_user):
+    user_info = {
+        'name': current_user.get_name(),
+        'devices': current_user.list_of_devices
+    }
+    user_info_encrypted = {k: encrypt(v) if isinstance(v, str) else [encrypt(str(device)) for device in v] for k, v in user_info.items()}
+
+    #user_info_decrypted = {k: decrypt(v) if isinstance(v, str) else [decrypt(device) for device in v] for k, v in user_info_encrypted.items()}
+    #print(user_info_decrypted) 
+
+    return jsonify(user_info_encrypted), 200
+
+@app.route('/check_code', methods=['POST'])
+def check_code():
+    data = request.get_json()
+    email_encoded = base64.b64encode(data['email'].encode()).decode()
+    code = data.get('code', None)
+    
+    if code is None:
+        return jsonify({'message': 'No code provided'}), 400
+
+    user = account.objects(email=email_encoded).first()
+
+    if user is None:
+        return jsonify({'message': 'Email not found'}), 404
+
+    if user.reset_code == code:
+        return jsonify({'message': 'Code is valid'}), 200
+    else:
+        return jsonify({'message': 'Invalid code'}), 400
 
 
 if __name__=='__main__':
