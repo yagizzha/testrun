@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, url_for
+from flask import Flask, request, jsonify, url_for, render_template
 from werkzeug.security import generate_password_hash, check_password_hash
 import pymongo
 from flask_mongoengine import MongoEngine
@@ -101,8 +101,8 @@ def login():
     else:
         return jsonify({'message': 'Invalid username or password'}), 401
 
-@app.route('/confirm_email/<token>', methods=['GET'])
-def confirm_email(token):
+@app.route('/confirm_email_old/<token>', methods=['GET'])
+def confirm_email_old(token):
     try:
         data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
         user_email = data['email']
@@ -115,6 +115,28 @@ def confirm_email(token):
             return jsonify({'message': 'User not found.'}), 404
     except:
         return jsonify({'message': 'The confirmation link is invalid or has expired.'}), 400
+
+
+@app.route('/confirm_email/<token>', methods=['GET'])
+def confirm_email(token):
+    
+    data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+    user_email = data['email']
+    user = account.objects(email=base64.b64encode(user_email.encode()).decode()).first()
+    if user:
+        user.active = True
+        user.save()
+        logo_url = url_for('static', filename='logo.jpg', _external=True)
+        return render_template('screen/confirmation_page.html', logo_url=logo_url)
+        #return jsonify({'message': 'The email is confirmed.'}), 200
+    else:
+        return jsonify({'message': 'User not found.'}), 404
+    # Confirm the user's email...
+    try:
+        pass
+    except Exception as e:
+        print(str(e))
+        return 'The confirmation link is invalid or has expired.'
 
 
 def token_required(f):
@@ -166,6 +188,9 @@ def send_confirmation_email(user_email):
     """
 
     mail.send(msg)
+
+
+
 
 def send_reset_password_email(user_email, code):
     msg = Message('Reset Password', sender = 'renmailtester@gmail.com', recipients = [user_email])

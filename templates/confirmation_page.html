@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Confirmation</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+            font-family: Arial, sans-serif;
+        }
+
+        .card {
+            width: 80%;
+            max-width: 500px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .card-top {
+            padding: 20px;
+            text-align: center;
+            background-color: #fff;
+        }
+
+        .card-bottom {
+            padding: 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-top">
+            <div class="logo">
+              <img src="{{ logo_url }}" alt="Logo">
+            </div>
+        </div>
+        <div class="card-bottom">
+            <h2>Your email has been successfully confirmed!</h2>
+        </div>
+    </div>
+</body>
+</html>
