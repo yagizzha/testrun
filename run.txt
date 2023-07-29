@@ -1,0 +1,6 @@
+rm -rf testrun/
+git clone https://github.com/yagizzha/testrun.git
+cd testrun
+pm2 delete all
+pm2 start be.py --name your-app --interpreter python3
+pm2 logs

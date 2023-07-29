@@ -127,7 +127,7 @@ def confirm_email(token):
         user.active = True
         user.save()
         logo_url = url_for('static', filename='logo.jpg', _external=True)
-        return render_template('screen/confirmation_page.html', logo_url=logo_url)
+        return render_template('confirmation_page.html', logo_url=logo_url)
         #return jsonify({'message': 'The email is confirmed.'}), 200
     else:
         return jsonify({'message': 'User not found.'}), 404
