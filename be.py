@@ -11,8 +11,13 @@ from random import randint
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from base64 import b64encode, b64decode
+import uuid
+
+print("Launching")
 
 app = Flask(__name__)
+print("Flask created")
+
 app.config["MONGODB_HOST"] = "mongodb+srv://ren1:test1@rent1.r0twrgt.mongodb.net/MDB"
 app.config['SECRET_KEY'] = 'gigaSecRETKeythATnoOnecAnFinDD'
 app.config['MAIL_SERVER']='smtp.gmail.com'
@@ -21,14 +26,18 @@ app.config['MAIL_USERNAME'] = 'renmailtester@gmail.com'
 app.config['MAIL_PASSWORD'] = 'uzamscmcgpwskwod'
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
+print("Flask values initialized")
 
 
 db = MongoEngine()
 db.init_app(app)
+print("Mongo initialized")
 mail = Mail(app)
+print("Mail initialized")
 
 key = b'rPC7WScr7fUpltFL'
 cipher = AES.new(key, AES.MODE_ECB)
+print("Cipher initialized")
 
 
 class account(db.Document):
@@ -67,6 +76,41 @@ def decrypt(ciphertext):
     plaintext = unpad(cipher.decrypt(ciphertext), AES.block_size)
     return plaintext.decode()
 
+class device(db.Document):
+    serial = db.IntField(unique=True)
+    type = db.StringField(default="solar_tracker")
+    version = db.FloatField(default=0.0)
+    latitude = db.FloatField(default=0.0)
+    longitude = db.FloatField(default=0.0)
+    accuracy = db.FloatField(default=0.0)
+    air_condition = db.StringField(default="")
+    last_updated = db.DateTimeField(default=datetime.datetime.utcnow)
+    temp_c = db.FloatField(default=0.0)
+    weather_cond_text = db.StringField(default="")
+    wind_mph = db.FloatField(default=0.0)
+    wind_kph = db.FloatField(default=0.0)
+    wind_degree = db.FloatField(default=0.0)
+    wind_dir = db.StringField(default="")
+    pressure_mb = db.FloatField(default=0.0)
+    pressure_in = db.FloatField(default=0.0)
+    precip_mm = db.FloatField(default=0.0)
+    precip_in = db.FloatField(default=0.0)
+    humidity = db.FloatField(default=0.0)
+    cloud = db.FloatField(default=0.0)
+    feelslike_c = db.FloatField(default=0.0)
+    feelslike_f = db.FloatField(default=0.0)
+    vis_km = db.FloatField(default=0.0)
+    vis_miles = db.FloatField(default=0.0)
+    uv = db.FloatField(default=0.0)
+    gust_mph = db.FloatField(default=0.0)
+    gust_kph = db.FloatField(default=0.0)
+
+def get_next_serial():
+    last_device = device.objects().order_by('-serial').first()
+    if last_device and last_device.serial:
+        return last_device.serial + 2
+    else:
+        return 1000000
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -149,7 +193,7 @@ def token_required(f):
 
 
         if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
+            return jsonify({'message': 'Token is missing!'}), 400
 
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
@@ -250,6 +294,14 @@ def reset_password():
 def get_devices(current_user):
     return jsonify({'devices': current_user.list_of_devices}), 200
 
+@app.route('/add_device', methods=['POST'])
+@token_required
+def add_device(current_user):
+    data=request.get_json()
+    current_user.list_of_devices.append(data["serial"])
+    current_user.save()
+    return jsonify({'devices': current_user.list_of_devices}), 200
+
 @app.route('/user_info', methods=['GET'])
 @token_required
 def user_info(current_user):
@@ -281,8 +333,63 @@ def check_code():
     if user.reset_code == code:
         return jsonify({'message': 'Code is valid'}), 200
     else:
-        return jsonify({'message': 'Invalid code'}), 400
+        return jsonify({'message': 'Invalid code'}), 401
+
+@app.route('/create_device', methods=['POST'])
+def create_device():
+    serial = get_next_serial()
+    new_device = device(serial=serial)
+    new_device.save()
+    return jsonify({'message': 'Device created successfully', 'serial': new_device.serial}), 200
+
+@app.route('/update_device_user', methods=['POST'])
+@token_required
+def update_device_user(current_user):
+    serial = request.json.get('serial')
+    if not serial:
+        return jsonify({"error": "Serial number is required in the JSON body"}), 400
+
+    currdev = device.objects(serial=serial).first()
+    if not currdev:
+        return jsonify({"error": "Device not found"}), 404
+    if serial not in current_user.list_of_devices:
+        return jsonify({"error": "Device not yours"}), 405
+
+    for field_name in request.json:
+        if field_name != 'serial' and hasattr(currdev, field_name):
+            setattr(currdev, field_name, request.json[field_name])
+
+    currdev.save()
+
+    return jsonify({"message": "Device updated successfully"}), 200
+
+
+@app.route('/update_device', methods=['POST'])
+def update_device():
+    serial = request.json.get('serial')
+    if not serial:
+        return jsonify({"error": "Serial number is required in the JSON body"}), 400
+
+    currdev = device.objects(serial=serial).first()
+    if not currdev:
+        return jsonify({"error": "Device not found"}), 404
+
+    for field_name in request.json:
+        if field_name != 'serial' and hasattr(currdev, field_name):
+            setattr(currdev, field_name, request.json[field_name])
+
+    currdev.save()
+
+    return jsonify({"message": "Device updated successfully"}), 200
+
+
 
 
 if __name__=='__main__':
-    app.run(host='0.0.0.0',port=2999)
+
+    
+    serial = get_next_serial()
+    new_device = device(serial=serial)
+    new_device.save()
+
+    app.run(host='0.0.0.0',port=2999,debug=True)
