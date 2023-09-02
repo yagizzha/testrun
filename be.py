@@ -38,6 +38,7 @@ print("Mail initialized")
 key = b'rPC7WScr7fUpltFL'
 cipher = AES.new(key, AES.MODE_ECB)
 print("Cipher initialized")
+print(AES.block_size)
 
 
 class account(db.Document):
@@ -309,12 +310,12 @@ def user_info(current_user):
         'name': current_user.get_name(),
         'devices': current_user.list_of_devices
     }
+
     user_info_encrypted = {k: encrypt(v) if isinstance(v, str) else [encrypt(str(device)) for device in v] for k, v in user_info.items()}
 
     #user_info_decrypted = {k: decrypt(v) if isinstance(v, str) else [decrypt(device) for device in v] for k, v in user_info_encrypted.items()}
     #print(user_info_decrypted) 
-
-    return jsonify(user_info_encrypted), 200
+    return jsonify(user_info), 200
 
 @app.route('/check_code', methods=['POST'])
 def check_code():
@@ -388,8 +389,5 @@ def update_device():
 if __name__=='__main__':
 
     
-    serial = get_next_serial()
-    new_device = device(serial=serial)
-    new_device.save()
 
-    app.run(host='0.0.0.0',port=2999,debug=True)
+    app.run(host='0.0.0.0',port=2999)
